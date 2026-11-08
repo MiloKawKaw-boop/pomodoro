@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pomodoro · Focus timer</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 24px; background: #f5f2ea; color: #253e35; font-family: system-ui, sans-serif; }
+  main { width: 100%; max-width: 440px; text-align: center; }
+  .eyebrow { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; }
+  h1 { font-size: 30px; letter-spacing: -.04em; margin: 12px 0 8px; }
+  .intro, footer { color: #63736b; font-size: 14px; }
+  .modes { display: flex; gap: 8px; padding: 5px; margin: 30px auto 0; border: 1px solid #d5dcd1; border-radius: 14px; }
+  button { font: inherit; cursor: pointer; min-height: 48px; border-radius: 10px; border: 0; touch-action: manipulation; }
+  button:focus-visible { outline: 3px solid #b46739; outline-offset: 4px; }
+  .modes button { flex: 1; background: transparent; color: #435b50; font-size: 14px; }
+  .modes button[aria-pressed="true"] { background: #fff; box-shadow: 0 2px 8px #253e3510; color: #253e35; font-weight: 700; }
+  .clock { width: min(280px, 100%); aspect-ratio: 1; border: 6px solid #dce4d7; border-radius: 50%; margin: 30px auto; display: flex; flex-direction: column; justify-content: center; }
+  #time { font-size: clamp(48px, 15vw, 68px); font-weight: 600; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
+  #status { margin: 8px 0 0; color: #63736b; font-size: 14px; }
+  .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .controls button { background: #e4e8df; color: #253e35; font-weight: 600; }
+  #start { background: #2e5746; color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  footer { margin-top: 28px; line-height: 1.6; }
+  @media (max-width: 340px) { body { padding: 16px; } .clock { margin: 24px auto; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">One thing at a time</div>
+  <h1>Pomodoro</h1>
+  <p class="intro">Make a little space for focused work.</p>
+  <div class="modes" role="group" aria-label="Timer mode">
+    <button id="focus" type="button" aria-pressed="true">Focus · 25 min</button>
+    <button id="break" type="button" aria-pressed="false">Break · 5 min</button>
+  </div>
+  <div class="clock">
+    <div id="time" role="timer" aria-label="Time remaining" aria-live="off">25:00</div>
+    <p id="status" role="status">Ready to focus</p>
+  </div>
+  <div class="controls" role="group" aria-label="Timer controls">
+    <button id="start" type="button">Start</button>
+    <button id="pause" type="button" disabled>Pause</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+  <footer>Focus for 25 minutes. Rest for 5.<br>A small rhythm for a clearer day.</footer>
+</main>
+<script>
+  'use strict';
+  const time = document.getElementById('time');
+  const status = document.getElementById('status');
+  const start = document.getElementById('start');
+  const pause = document.getElementById('pause');
+  const focus = document.getElementById('focus');
+  const rest = document.getElementById('break');
+  let mode = 'focus';
+  let remaining = 25 * 60 * 1000;
+  let deadline = 0;
+  let interval = null;
+
+  function render() {
+    const seconds = Math.ceil(remaining / 1000);
+    const display = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+    time.textContent = display;
+    document.title = display + ' · ' + (mode === 'focus' ? 'Focus' : 'Break');
+    start.disabled = interval !== null || remaining === 0;
+    pause.disabled = interval === null;
+  }
+  function stop() {
+    clearInterval(interval);
+    interval = null;
+  }
+  function tick() {
+    remaining = Math.max(0, deadline - Date.now());
+    if (remaining === 0) {
+      stop();
+      status.textContent = mode === 'focus' ? 'Well done. Time for a break!' : 'Refreshed and ready.';
+      render();
+      alert(mode === 'focus' ? 'Focus session complete! Take a 5-minute break.' : 'Break complete! Ready for another focus session?');
+      return;
+    }
+    render();
+  }
+  function reset() {
+    stop();
+    remaining = (mode === 'focus' ? 25 : 5) * 60 * 1000;
+    status.textContent = mode === 'focus' ? 'Ready to focus' : 'Ready to unwind';
+    render();
+  }
+  function selectMode(next) {
+    mode = next;
+    focus.setAttribute('aria-pressed', String(mode === 'focus'));
+    rest.setAttribute('aria-pressed', String(mode === 'break'));
+    reset();
+  }
+  start.addEventListener('click', () => {
+    if (interval !== null || remaining === 0) return;
+    deadline = Date.now() + remaining;
+    interval = setInterval(tick, 200);
+    status.textContent = mode === 'focus' ? 'A little focus goes a long way.' : 'Breathe. Stretch. Recharge.';
+    render();
+  });
+  pause.addEventListener('click', () => {
+    if (interval === null) return;
+    tick();
+    if (interval === null) return;
+    stop();
+    status.textContent = 'Paused. Take your time.';
+    render();
+  });
+  document.getElementById('reset').addEventListener('click', reset);
+  focus.addEventListener('click', () => selectMode('focus'));
+  rest.addEventListener('click', () => selectMode('break'));
+  document.addEventListener('visibilitychange', () => { if (interval !== null) tick(); });
+  render();
+</script>
+</body>
+</html>
